@@ -147,9 +147,22 @@ namespace g3 {
 // LOG(level) is the API for the stream log
 #define LOG(level) if(!g3::logLevel(level)){ } else INTERNAL_LOG_MESSAGE(level).stream()
 
+#define G3LOG_LOG(level) if(!g3::logLevel(level)){ } else INTERNAL_LOG_MESSAGE(level).stream()
+
+//LOG for every n message
+#define G3LOG_LOG_EVERY_N(level, n)  \
+   static int LOG_OCCURRENCES = 0, LOG_OCCURRENCES_MOD_N = 0;  \
+   ++LOG_OCCURRENCES;  \
+   if (++LOG_OCCURRENCES_MOD_N > n) LOG_OCCURRENCES_MOD_N -= n; \
+   if (LOG_OCCURRENCES_MOD_N == 1) INTERNAL_LOG_MESSAGE(level).stream()
+   
 
 // 'Conditional' stream log
 #define LOG_IF(level, boolean_expression)  \
+   if(true == (boolean_expression))  \
+      if(g3::logLevel(level))  INTERNAL_LOG_MESSAGE(level).stream()
+
+#define G3LOG_LOG_IF(level, boolean_expression)  \
    if(true == (boolean_expression))  \
       if(g3::logLevel(level))  INTERNAL_LOG_MESSAGE(level).stream()
 

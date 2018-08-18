@@ -22,6 +22,7 @@ namespace g3 {
 	     {G3LOG_DEBUG.value,{G3LOG_DEBUG}},
          {INFO.value, {INFO}},
          {WARNING.value, {WARNING}},
+         {ERROR.value, {ERROR}},
          {FATAL.value, {FATAL}}
       };
 

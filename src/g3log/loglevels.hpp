@@ -85,6 +85,7 @@ namespace g3 {
    static const int kDebugValue = 100;
    static const int kInfoValue = 300;
    static const int kWarningValue = 500;
+   static const int kErrorValue = 800;
    static const int kFatalValue = 1000;
    static const int kInternalFatalValue = 2000;
 } // g3
@@ -93,6 +94,7 @@ namespace g3 {
 const LEVELS G3LOG_DEBUG{g3::kDebugValue, {"DEBUG"}},
    INFO {g3::kInfoValue, {"INFO"}},
    WARNING {g3::kWarningValue, {"WARNING"}},
+   ERROR {g3::kErrorValue, {"ERROR"}},
    FATAL {g3::kFatalValue, {"FATAL"}};
 
 
