@@ -246,4 +246,201 @@ And here is possible output
 #define CHECK_F(boolean_expression, printf_like_message, ...)    \
    if (false == (boolean_expression))  INTERNAL_CONTRACT_MESSAGE(#boolean_expression).capturef(printf_like_message, ##__VA_ARGS__)
 
+// Add CHECKs features for us
+#ifndef G3LOG_DLL_DECL
+# if defined(_WIN32) && !defined(__CYGWIN__)
+#   define G3LOG_DLL_DECL  __declspec(dllimport)
+# else
+#   define G3LOG_DLL_DECL
+# endif
+#endif
+
+#ifndef G3LOG_PREDICT_BRANCH_NOT_TAKEN
+#if !defined(_WIN32)
+#define G3LOG_PREDICT_BRANCH_NOT_TAKEN(x) (__builtin_expect(x, 0))
+#else
+#define G3LOG_PREDICT_BRANCH_NOT_TAKEN(x) x
+#endif
+#endif
+
+#ifndef G3LOG_PREDICT_FALSE
+#if !defined(_WIN32)
+#define G3LOG_PREDICT_FALSE(x) (__builtin_expect(x, 0))
+#else
+#define G3LOG_PREDICT_FALSE(x) x
+#endif
+#endif
+
+#ifndef G3LOG_PREDICT_TRUE
+#if !defined(_WIN32)
+#define G3LOG_PREDICT_TRUE(x) (__builtin_expect(!!(x), 1))
+#else
+#define G3LOG_PREDICT_TRUE(x) x
+#endif
+#endif
+
+
+#if defined(NDEBUG) && !defined(DCHECK_ALWAYS_ON)
+#define DCHECK_IS_ON() 0
+#else
+#define DCHECK_IS_ON() 1
+#endif
+
+template <typename T>
+inline void MakeCheckOpValueString(std::ostream* os, const T& v) {
+  (*os) << v;
+}
+
+// Overrides for char types provide readable values for unprintable
+// characters.
+template <> G3LOG_DLL_DECL
+void MakeCheckOpValueString(std::ostream* os, const char& v);
+template <> G3LOG_DLL_DECL
+void MakeCheckOpValueString(std::ostream* os, const signed char& v);
+template <> G3LOG_DLL_DECL
+void MakeCheckOpValueString(std::ostream* os, const unsigned char& v);
+
+// Build the error message string. Specify no inlining for code size.
+template <typename T1, typename T2>
+std::string* MakeCheckOpString(const T1& v1, const T2& v2, const char* exprtext)
+    __attribute__((noinline));
+
+namespace base {
+
+
+// A helper class for formatting "expr (V1 vs. V2)" in a CHECK_XX
+// statement.  See MakeCheckOpString for sample usage.  Other
+// approaches were considered: use of a template method (e.g.,
+// base::BuildCheckOpString(exprtext, base::Print<T1>, &v1,
+// base::Print<T2>, &v2), however this approach has complications
+// related to volatile arguments and function-pointer arguments).
+class G3LOG_DLL_DECL CheckOpMessageBuilder {
+ public:
+  // Inserts "exprtext" and " (" to the stream.
+  explicit CheckOpMessageBuilder(const char *exprtext);
+  // Deletes "stream_".
+  ~CheckOpMessageBuilder();
+  // For inserting the first variable.
+  std::ostream* ForVar1() { return stream_; }
+  // For inserting the second variable (adds an intermediate " vs. ").
+  std::ostream* ForVar2();
+  // Get the result (inserts the closing ")").
+  std::string* NewString();
+
+ private:
+  std::ostringstream *stream_;
+};
+
+} // namespace base
+
+
+struct CheckOpString {
+  CheckOpString(std::string* str) : str_(str) { }
+  // No destructor: if str_ is non-NULL, we're about to LOG(FATAL),
+  // so there's no point in cleaning up str_.
+  operator bool() const {
+    return G3LOG_PREDICT_BRANCH_NOT_TAKEN(str_ != NULL);
+  }
+  std::string* str_;
+};
+
+// Function is overloaded for integral types to allow static const
+// integrals declared in classes and not defined to be used as arguments to
+// CHECK* macros. It's not encouraged though.
+template <class T>
+inline const T&       GetReferenceableValue(const T&           t) { return t; }
+inline char           GetReferenceableValue(char               t) { return t; }
+inline unsigned char  GetReferenceableValue(unsigned char      t) { return t; }
+inline signed char    GetReferenceableValue(signed char        t) { return t; }
+inline short          GetReferenceableValue(short              t) { return t; }
+inline unsigned short GetReferenceableValue(unsigned short     t) { return t; }
+inline int            GetReferenceableValue(int                t) { return t; }
+inline unsigned int   GetReferenceableValue(unsigned int       t) { return t; }
+inline long           GetReferenceableValue(long               t) { return t; }
+inline unsigned long  GetReferenceableValue(unsigned long      t) { return t; }
+inline long long      GetReferenceableValue(long long          t) { return t; }
+inline unsigned long long GetReferenceableValue(unsigned long long t) {
+  return t;
+}
+
+template <typename T1, typename T2>
+std::string* MakeCheckOpString(const T1& v1, const T2& v2, const char* exprtext) {
+  base::CheckOpMessageBuilder comb(exprtext);
+  MakeCheckOpValueString(comb.ForVar1(), v1);
+  MakeCheckOpValueString(comb.ForVar2(), v2);
+  return comb.NewString();
+}
+
+#define DEFINE_CHECK_OP_IMPL(name, op) \
+  template <typename T1, typename T2> \
+  inline std::string* name##Impl(const T1& v1, const T2& v2,    \
+                            const char* exprtext) { \
+    if (G3LOG_PREDICT_TRUE(v1 op v2)) return NULL; \
+    else return MakeCheckOpString(v1, v2, exprtext); \
+  } \
+  inline std::string* name##Impl(int v1, int v2, const char* exprtext) { \
+    return name##Impl<int, int>(v1, v2, exprtext); \
+  }
+
+// We use the full name Check_EQ, Check_NE, etc. in case the file including
+// base/logging.h provides its own #defines for the simpler names EQ, NE, etc.
+// This happens if, for example, those are used as token names in a
+// yacc grammar.
+DEFINE_CHECK_OP_IMPL(Check_EQ, ==)  // Compilation error with CHECK_EQ(NULL, x)?
+DEFINE_CHECK_OP_IMPL(Check_NE, !=)  // Use CHECK(x == NULL) instead.
+DEFINE_CHECK_OP_IMPL(Check_LE, <=)
+DEFINE_CHECK_OP_IMPL(Check_LT, < )
+DEFINE_CHECK_OP_IMPL(Check_GE, >=)
+DEFINE_CHECK_OP_IMPL(Check_GT, > )
+
+#undef DEFINE_CHECK_OP_IMPL
+
+#if defined(STATIC_ANALYSIS)
+// Only for static analysis tool to know that it is equivalent to assert
+#define CHECK_OP_LOG(name, op, val1, val2, log) CHECK((val1) op (val2))
+#elif DCHECK_IS_ON()
+// In debug mode, avoid constructing CheckOpStrings if possible,
+// to reduce the overhead of CHECK statments by 2x.
+// Real DCHECK-heavy tests have seen 1.5x speedups.
+
+// The meaning of "string" might be different between now and
+// when this macro gets invoked (e.g., if someone is experimenting
+// with other string implementations that get defined after this
+// file is included).  Save the current meaning now and use it
+// in the macro.
+typedef std::string _Check_string;
+#define CHECK_OP_LOG(name, op, val1, val2, log)                         \
+  while (_Check_string* _result =                                       \
+         Check##name##Impl(                                             \
+             GetReferenceableValue(val1),                               \
+             GetReferenceableValue(val2),                               \
+             #val1 " " #op " " #val2))                                  \
+    log(__FILE__, __LINE__,                                             \
+        static_cast<const char*>(__PRETTY_FUNCTION__),                  \
+        CheckOpString(_result)).stream()
+#else
+// In optimized mode, use CheckOpString to hint to compiler that
+// the while condition is unlikely.
+#define CHECK_OP_LOG(name, op, val1, val2, log)                         \
+  while (CheckOpString _result =                                        \
+         Check##name##Impl(                                             \
+             GetReferenceableValue(val1),                               \
+             GetReferenceableValue(val2),                               \
+             #val1 " " #op " " #val2))                                  \                          
+    log(__FILE__, __LINE__,                                             \
+        static_cast<const char*>(__PRETTY_FUNCTION__),                  \
+     _result).stream()
+#endif  // STATIC_ANALYSIS, DCHECK_IS_ON()
+
+
+#define CHECK_OP(name, op, val1, val2)    \
+   CHECK_OP_LOG(name, op, val1, val2, LogCapture)   
+
+#define CHECK_EQ(val1, val2)  CHECK_OP(_EQ, ==, val1, val2)
+#define CHECK_NE(val1, val2)  CHECK_OP(_NE, !=, val1, val2)
+#define CHECK_LE(val1, val2)  CHECK_OP(_LE, <=, val1, val2)
+#define CHECK_GE(val1, val2)  CHECK_OP(_GE, >=, val1, val2)
+#define CHECK_LT(val1, val2)  CHECK_OP(_LT, <, val1, val2)
+#define CHECK_GT(val1, val2)  CHECK_OP(_GT, >, val1, val2)
+
 

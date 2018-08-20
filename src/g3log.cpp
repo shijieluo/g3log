@@ -256,3 +256,54 @@ namespace g3 {
 
 
 
+namespace base {
+
+CheckOpMessageBuilder::CheckOpMessageBuilder(const char *exprtext)
+    : stream_(new std::ostringstream) {
+  *stream_ << exprtext << " (";
+}
+
+CheckOpMessageBuilder::~CheckOpMessageBuilder() {
+  delete stream_;
+}
+
+std::ostream* CheckOpMessageBuilder::ForVar2() {
+  *stream_ << " vs. ";
+  return stream_;
+}
+
+std::string* CheckOpMessageBuilder::NewString() {
+  *stream_ << ")";
+  return new std::string(stream_->str());
+}
+
+} // namespace base
+
+
+
+template <>
+void MakeCheckOpValueString(std::ostream* os, const char& v) {
+  if (v >= 32 && v <= 126) {
+    (*os) << "'" << v << "'";
+  } else {
+    (*os) << "char value " << (short)v;
+  }
+}
+
+template <>
+void MakeCheckOpValueString(std::ostream* os, const signed char& v) {
+  if (v >= 32 && v <= 126) {
+    (*os) << "'" << v << "'";
+  } else {
+    (*os) << "signed char value " << (short)v;
+  }
+}
+
+template <>
+void MakeCheckOpValueString(std::ostream* os, const unsigned char& v) {
+  if (v >= 32 && v <= 126) {
+    (*os) << "'" << v << "'";
+  } else {
+    (*os) << "unsigned char value " << (unsigned short)v;
+  }
+}

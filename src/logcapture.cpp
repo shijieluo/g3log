@@ -65,6 +65,28 @@ LogCapture::LogCapture(const char *file, const int line, const char *function, c
    }
 }
 
+LogCapture::LogCapture(const char *file, const int line, const char* function, const CheckOpString result, const LEVELS &level,
+                       const char *expression, g3::SignalType fatal_signal, const char *dump)
+   : _file(file), _line(line), _function(function), _level(level), _expression(expression), _fatal_signal(fatal_signal) {
+
+   stream() << "Check failed: " << (*result.str_) << " ";
+   if (g3::internal::wasFatal(level)) {
+      _stack_trace = std::string{"\n*******\tSTACKDUMP *******\n"};
+      _stack_trace.append(g3::internal::stackdump(dump));
+   }
+}
+
+LogCapture::LogCapture(const char *file, const int line, const char* function, std::string result, const LEVELS &level,
+                       const char *expression, g3::SignalType fatal_signal, const char *dump)
+   : _file(file), _line(line), _function(function), _level(level), _expression(expression), _fatal_signal(fatal_signal) {
+
+   stream() << "Check failed: " << result << " ";
+   if (g3::internal::wasFatal(level)) {
+      _stack_trace = std::string{"\n*******\tSTACKDUMP *******\n"};
+      _stack_trace.append(g3::internal::stackdump(dump));
+   }
+}
+
 
 
 /**

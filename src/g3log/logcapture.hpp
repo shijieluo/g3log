@@ -25,6 +25,8 @@
  * As a safety precaution: No memory allocated here will be moved into the background
  * worker in case of dynamic loaded library reasons
 */
+struct CheckOpString;
+
 struct LogCapture {
    /// Called from crash handler when a fatal signal has occurred (SIGSEGV etc)
    LogCapture(const LEVELS &level, g3::SignalType fatal_signal, const char *dump = nullptr);
@@ -38,7 +40,12 @@ struct LogCapture {
     */
    LogCapture(const char *file, const int line, const char *function, const LEVELS &level, const char *expression = "", g3::SignalType fatal_signal = SIGABRT, const char *dump = nullptr);
 
+   
+   /// Called when Check Failed
+   LogCapture(const char *file, const int line, const char *function, const CheckOpString result, const LEVELS &level = FATAL, const char *expression = "", g3::SignalType fatal_signal = SIGABRT, const char *dump = nullptr);
 
+
+   LogCapture(const char *file, const int line, const char *function, const std::string result, const LEVELS &level = FATAL, const char *expression = "", g3::SignalType fatal_signal = SIGABRT, const char *dump = nullptr);
    // At destruction the message will be forwarded to the g3log worker.
    // In the case of dynamically (at runtime) loaded libraries, the important thing to know is that
    // all strings are copied, so the original are not destroyed at the receiving end, only the copy
