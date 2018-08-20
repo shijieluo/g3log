@@ -307,3 +307,23 @@ void MakeCheckOpValueString(std::ostream* os, const unsigned char& v) {
     (*os) << "unsigned char value " << (unsigned short)v;
   }
 }
+
+// Helper functions for string comparisons.
+#define DEFINE_CHECK_STROP_IMPL(name, func, expected)                   \
+  std::string* Check##func##expected##Impl(const char* s1, const char* s2,   \
+                                      const char* names) {              \
+    bool equal = s1 == s2 || (s1 && s2 && !func(s1, s2));               \
+    if (equal == expected) return NULL;                                 \
+    else {                                                              \
+      std::ostringstream ss;                                                 \
+      if (!s1) s1 = "";                                                 \
+      if (!s2) s2 = "";                                                 \
+      ss << #name " failed: " << names << " (" << s1 << " vs. " << s2 << ")"; \
+      return new std::string(ss.str());                                      \
+    }                                                                   \
+  }
+DEFINE_CHECK_STROP_IMPL(CHECK_STREQ, strcmp, true)
+DEFINE_CHECK_STROP_IMPL(CHECK_STRNE, strcmp, false)
+DEFINE_CHECK_STROP_IMPL(CHECK_STRCASEEQ, strcasecmp, true)
+DEFINE_CHECK_STROP_IMPL(CHECK_STRCASENE, strcasecmp, false)
+#undef DEFINE_CHECK_STROP_IMPL

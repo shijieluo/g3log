@@ -28,7 +28,7 @@
 
 #include <string>
 #include <functional>
-
+#include <string.h>
 
 #if !(defined(__PRETTY_FUNCTION__))
 #define __PRETTY_FUNCTION__   __FUNCTION__
@@ -172,6 +172,20 @@ namespace g3 {
    if(true == (boolean_expression))  \
       if(g3::logLevel(level))  INTERNAL_LOG_MESSAGE(level).stream()
 
+#define LOG_IF_EVERY_N(level, boolean_expression, n)      \
+  static int LOG_OCCURRENCES = 0, LOG_OCCURRENCES_MOD_N = 0; \
+  ++LOG_OCCURRENCES; \
+  if boolean_expression && \
+     ((LOG_OCCURRENCES_MOD_N=(LOG_OCCURRENCES_MOD_N + 1) % n) == (1 % n))) \
+     INTERNAL_LOG_MESSAGE(level).stream();
+
+#define G3LOG_LOG_IF_EVERY_N(level, boolean_expression, n)      \
+  static int LOG_OCCURRENCES = 0, LOG_OCCURRENCES_MOD_N = 0; \
+  ++LOG_OCCURRENCES; \
+  if boolean_expression && \
+     ((LOG_OCCURRENCES_MOD_N=(LOG_OCCURRENCES_MOD_N + 1) % n) == (1 % n))) \
+     INTERNAL_LOG_MESSAGE(level).stream();
+
 // 'Design By Contract' stream API. For Broken Contracts:
 //         unit testing: it will throw std::runtime_error when a contract breaks
 //         I.R.L : it will exit the application by using fatal signal SIGABRT
@@ -247,6 +261,17 @@ And here is possible output
    if (false == (boolean_expression))  INTERNAL_CONTRACT_MESSAGE(#boolean_expression).capturef(printf_like_message, ##__VA_ARGS__)
 
 // Add CHECKs features for us
+
+#if defined(_MSC_VER)
+#define G3LOG_MSVC_PUSH_DISABLE_WARNING(n) __pragma(warning(push)) \
+                                     __pragma(warning(disable:n))
+#define G3LOG_MSVC_POP_WARNING() __pragma(warning(pop))
+#else
+#define G3LOG_MSVC_PUSH_DISABLE_WARNING(n)
+#define G3LOG_MSVC_POP_WARNING()
+#endif
+
+
 #ifndef G3LOG_DLL_DECL
 # if defined(_WIN32) && !defined(__CYGWIN__)
 #   define G3LOG_DLL_DECL  __declspec(dllimport)
@@ -442,5 +467,202 @@ typedef std::string _Check_string;
 #define CHECK_GE(val1, val2)  CHECK_OP(_GE, >=, val1, val2)
 #define CHECK_LT(val1, val2)  CHECK_OP(_LT, <, val1, val2)
 #define CHECK_GT(val1, val2)  CHECK_OP(_GT, >, val1, val2)
+
+// Check that the input is non NULL.  This very useful in constructor
+// initializer lists.
+
+#define CHECK_NOTNULL(val) \
+  CheckNotNull(__FILE__, __LINE__, "'" #val "' Must be non NULL", (val))
+
+// Check if it's compiled in C++11 mode.
+//
+// GXX_EXPERIMENTAL_CXX0X is defined by gcc and clang up to at least
+// gcc-4.7 and clang-3.1 (2011-12-13).  __cplusplus was defined to 1
+// in gcc before 4.7 (Crosstool 16) and clang before 3.1, but is
+// defined according to the language version in effect thereafter.
+// Microsoft Visual Studio 14 (2015) sets __cplusplus==199711 despite
+// reasonably good C++11 support, so we set LANG_CXX for it and
+// newer versions (_MSC_VER >= 1900).
+#if (defined(__GXX_EXPERIMENTAL_CXX0X__) || __cplusplus >= 201103L || \
+     (defined(_MSC_VER) && _MSC_VER >= 1900))
+// Helper for CHECK_NOTNULL().
+//
+// In C++11, all cases can be handled by a single function. Since the value
+// category of the argument is preserved (also for rvalue references),
+// member initializer lists like the one below will compile correctly:
+//
+//   Foo()
+//     : x_(CHECK_NOTNULL(MethodReturningUniquePtr())) {}
+template <typename T>
+T CheckNotNull(const char* file, int line, const char* names, T&& t) {
+ if (t == nullptr) {
+   LogCapture(__FILE__, __LINE__, static_cast<const char*>(__PRETTY_FUNCTION__), new std::string(names));
+ }
+ return std::forward<T>(t);
+}
+
+#else
+
+// A small helper for CHECK_NOTNULL().
+template <typename T>
+T* CheckNotNull(const char *file, int line, const char *names, T* t) {
+  if (t == NULL) {
+    LogCapture(__FILE__, __LINE__, static_cast<const char*>(__PRETTY_FUNCTION__), new std::string(names));
+  }
+  return t;
+}
+#endif
+
+// Helper functions for string comparisons.
+// To avoid bloat, the definitions are in logging.cc.
+#define DECLARE_CHECK_STROP_IMPL(func, expected) \
+  G3LOG_DLL_DECL std::string* Check##func##expected##Impl( \
+      const char* s1, const char* s2, const char* names);
+DECLARE_CHECK_STROP_IMPL(strcmp, true)
+DECLARE_CHECK_STROP_IMPL(strcmp, false)
+DECLARE_CHECK_STROP_IMPL(strcasecmp, true)
+DECLARE_CHECK_STROP_IMPL(strcasecmp, false)
+#undef DECLARE_CHECK_STROP_IMPL
+
+// Helper macro for string comparisons.
+// Don't use this macro directly in your code, use CHECK_STREQ et al below.
+#define CHECK_STROP(func, op, expected, s1, s2) \
+  while (CheckOpString _result = \
+         Check##func##expected##Impl((s1), (s2), \
+                                     #s1 " " #op " " #s2)) \
+    LOG(FATAL) << *_result.str_
+
+
+// String (char*) equality/inequality checks.
+// CASE versions are case-insensitive.
+//
+// Note that "s1" and "s2" may be temporary strings which are destroyed
+// by the compiler at the end of the current "full expression"
+// (e.g. CHECK_STREQ(Foo().c_str(), Bar().c_str())).
+
+#define CHECK_STREQ(s1, s2) CHECK_STROP(strcmp, ==, true, s1, s2)
+#define CHECK_STRNE(s1, s2) CHECK_STROP(strcmp, !=, false, s1, s2)
+#define CHECK_STRCASEEQ(s1, s2) CHECK_STROP(strcasecmp, ==, true, s1, s2)
+#define CHECK_STRCASENE(s1, s2) CHECK_STROP(strcasecmp, !=, false, s1, s2)
+
+#define CHECK_INDEX(I,A) CHECK(I < (sizeof(A)/sizeof(A[0])))
+#define CHECK_BOUND(B,A) CHECK(B <= (sizeof(A)/sizeof(A[0])))
+
+#define CHECK_DOUBLE_EQ(val1, val2)              \
+  do {                                           \
+    CHECK_LE((val1), (val2)+0.000000000000001L); \
+    CHECK_GE((val1), (val2)-0.000000000000001L); \
+  } while (0)
+
+#define CHECK_NEAR(val1, val2, margin)           \
+  do {                                           \
+    CHECK_LE((val1), (val2)+(margin));           \
+    CHECK_GE((val1), (val2)-(margin));           \
+} while (0)
+
+// Plus some debug-logging macros that get compiled to nothing for production
+
+#if DCHECK_IS_ON()
+
+#define DLOG(level) LOG(level)
+#define DLOG_IF(level, boolean_expression) LOG_IF(level, boolean_expression)
+#define DLOG_EVERY_N(level, n) LOG_EVERY_N(level, n)
+#define DLOG_IF_EVERY_N(level, boolean_expression, n) \
+  LOG_IF_EVERY_N(level, boolean_expression, n)
+#define DLOG_ASSERT(boolean_expression) LOG_ASSERT(boolean_expression)
+
+// debug-only checking.  executed if DCHECK_IS_ON().
+#define DCHECK(boolean_expression) CHECK(boolean_expression)
+#define DCHECK_EQ(val1, val2) CHECK_EQ(val1, val2)
+#define DCHECK_NE(val1, val2) CHECK_NE(val1, val2)
+#define DCHECK_LE(val1, val2) CHECK_LE(val1, val2)
+#define DCHECK_LT(val1, val2) CHECK_LT(val1, val2)
+#define DCHECK_GE(val1, val2) CHECK_GE(val1, val2)
+#define DCHECK_GT(val1, val2) CHECK_GT(val1, val2)
+#define DCHECK_NOTNULL(val) CHECK_NOTNULL(val)
+#define DCHECK_STREQ(str1, str2) CHECK_STREQ(str1, str2)
+#define DCHECK_STRCASEEQ(str1, str2) CHECK_STRCASEEQ(str1, str2)
+#define DCHECK_STRNE(str1, str2) CHECK_STRNE(str1, str2)
+#define DCHECK_STRCASENE(str1, str2) CHECK_STRCASENE(str1, str2)
+
+#else  // !DCHECK_IS_ON()
+
+#define DLOG(level) \
+  true ? (void) 0 : @ac_google_namespace@::LogMessageVoidify() & LOG(level)
+
+#define DLOG_IF(level, boolean_expression) \
+  (true || !(boolean_expression)) ? (void) 0 : @ac_google_namespace@::LogMessageVoidify() & LOG(level)
+
+#define DLOG_EVERY_N(level, n) \
+  true ? (void) 0 : @ac_google_namespace@::LogMessageVoidify() & LOG(level)
+
+#define DLOG_IF_EVERY_N(level, boolean_expression, n) \
+  (true || !(boolean_expression))? (void) 0 : @ac_google_namespace@::LogMessageVoidify() & LOG(level)
+
+#define DLOG_ASSERT(boolean_expression) \
+  true ? (void) 0 : LOG_ASSERT(boolean_expression)
+
+// MSVC warning C4127: conditional expression is constant
+#define DCHECK(boolean_expression) \
+  G3LOG_MSVC_PUSH_DISABLE_WARNING(4127) \
+  while (false) \
+    G3LOG_MSVC_POP_WARNING() CHECK(boolean_expression)
+
+#define DCHECK_EQ(val1, val2) \
+  G3LOG_MSVC_PUSH_DISABLE_WARNING(4127) \
+  while (false) \
+    G3LOG_MSVC_POP_WARNING() CHECK_EQ(val1, val2)
+
+#define DCHECK_NE(val1, val2) \
+  G3LOG_MSVC_PUSH_DISABLE_WARNING(4127) \
+  while (false) \
+    G3LOG_MSVC_POP_WARNING() CHECK_NE(val1, val2)
+
+#define DCHECK_LE(val1, val2) \
+  G3LOG_MSVC_PUSH_DISABLE_WARNING(4127) \
+  while (false) \
+    G3LOG_MSVC_POP_WARNING() CHECK_LE(val1, val2)
+
+#define DCHECK_LT(val1, val2) \
+  G3LOG_MSVC_PUSH_DISABLE_WARNING(4127) \
+  while (false) \
+    G3LOG_MSVC_POP_WARNING() CHECK_LT(val1, val2)
+
+#define DCHECK_GE(val1, val2) \
+  G3LOG_MSVC_PUSH_DISABLE_WARNING(4127) \
+  while (false) \
+    G3LOG_MSVC_POP_WARNING() CHECK_GE(val1, val2)
+
+#define DCHECK_GT(val1, val2) \
+  G3LOG_MSVC_PUSH_DISABLE_WARNING(4127) \
+  while (false) \
+    G3LOG_MSVC_POP_WARNING() CHECK_GT(val1, val2)
+
+// You may see warnings in release mode if you don't use the return
+// value of DCHECK_NOTNULL. Please just use DCHECK for such cases.
+#define DCHECK_NOTNULL(val) (val)
+
+#define DCHECK_STREQ(str1, str2) \
+  G3LOG_MSVC_PUSH_DISABLE_WARNING(4127) \
+  while (false) \
+    G3LOG_MSVC_POP_WARNING() CHECK_STREQ(str1, str2)
+
+#define DCHECK_STRCASEEQ(str1, str2) \
+  G3LOG_MSVC_PUSH_DISABLE_WARNING(4127) \
+  while (false) \
+    G3LOG_MSVC_POP_WARNING() CHECK_STRCASEEQ(str1, str2)
+
+#define DCHECK_STRNE(str1, str2) \
+  G3LOG_MSVC_PUSH_DISABLE_WARNING(4127) \
+  while (false) \
+    G3LOG_MSVC_POP_WARNING() CHECK_STRNE(str1, str2)
+
+#define DCHECK_STRCASENE(str1, str2) \
+  G3LOG_MSVC_PUSH_DISABLE_WARNING(4127) \
+  while (false) \
+    G3LOG_MSVC_POP_WARNING() CHECK_STRCASENE(str1, str2)
+
+#endif  // DCHECK_IS_ON()
+
 
 
