@@ -666,6 +666,8 @@ DECLARE_CHECK_STROP_IMPL(strcasecmp, false)
 
 // add conditions to avoid name conflicts
 
+
+/*
 #if defined(INFO)
 #else
 #define INFO G3LOG_INFO
@@ -685,3 +687,4 @@ DECLARE_CHECK_STROP_IMPL(strcasecmp, false)
 #else
 #define FATAL G3LOG_FATAL
 #endif
+*/
