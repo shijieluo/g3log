@@ -14,7 +14,7 @@
 namespace g3 {
    namespace internal {
       bool wasFatal(const LEVELS& level) {
-         return level.value >= FATAL.value;
+         return level.value >= G3LOG_FATAL.value;
       }
 
 #ifdef G3_DYNAMIC_LOGGING

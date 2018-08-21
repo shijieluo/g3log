@@ -94,10 +94,10 @@ namespace g3 {
 
 
 const LEVELS G3LOG_DEBUG{g3::kDebugValue, {"DEBUG"}},
-   INFO {g3::kInfoValue, {"INFO"}},
-   WARNING {g3::kWarningValue, {"WARNING"}},
-   ERROR {g3::kErrorValue, {"ERROR"}},
-   FATAL {g3::kFatalValue, {"FATAL"}};
+   G3LOG_INFO {g3::kInfoValue, {"INFO"}},
+   G3LOG_WARNING {g3::kWarningValue, {"WARNING"}},
+   G3LOG_ERROR {g3::kErrorValue, {"ERROR"}},
+   G3LOG_FATAL {g3::kFatalValue, {"FATAL"}};
 
 
 namespace g3 {
@@ -107,7 +107,7 @@ namespace g3 {
       LEVELS level;
 
       // default operator needed for std::map compliance
-      LoggingLevel(): status(false), level(INFO) {};
+      LoggingLevel(): status(false), level(G3LOG_INFO) {};
       LoggingLevel(const LoggingLevel& lvl) : status(lvl.status), level(lvl.level) {}
       LoggingLevel(const LEVELS& lvl): status(true), level(lvl) {};
       LoggingLevel(const LEVELS& lvl, bool enabled): status(enabled), level(lvl) {};

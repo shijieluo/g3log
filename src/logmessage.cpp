@@ -93,7 +93,7 @@ namespace g3 {
          return fatalExceptionToString(*this);
       }
 
-      if (FATAL.value == _level.value) {
+      if (G3LOG_FATAL.value == _level.value) {
          return fatalLogToString(*this);
       }
 

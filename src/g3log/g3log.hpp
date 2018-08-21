@@ -663,3 +663,25 @@ DECLARE_CHECK_STROP_IMPL(strcasecmp, false)
     G3LOG_MSVC_POP_WARNING() CHECK_STRCASENE(str1, str2)
 
 #endif  // DCHECK_IS_ON()
+
+// add conditions to avoid name conflicts
+
+#if defined(INFO)
+#else
+#define INFO G3LOG_INFO
+#endif
+
+#if defined(WARNING)
+#else
+#define WARNING G3LOG_WARNING
+#endif
+
+#if defined(ERROR)
+#else
+#define ERROR G3LOG_ERROR
+#endif
+
+#if defined(FATAL)
+#else
+#define FATAL G3LOG_FATAL
+#endif
