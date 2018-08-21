@@ -530,7 +530,7 @@ DECLARE_CHECK_STROP_IMPL(strcasecmp, false)
   while (CheckOpString _result = \
          Check##func##expected##Impl((s1), (s2), \
                                      #s1 " " #op " " #s2)) \
-    LOG(FATAL) << *_result.str_
+    LOG(G3LOG_FATAL) << *_result.str_
 
 
 // String (char*) equality/inequality checks.
