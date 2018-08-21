@@ -35,6 +35,7 @@ struct LEVELS {
 
    LEVELS(const LEVELS& other): value(other.value), text(other.text.c_str()) {}
    LEVELS(int id, const std::string& idtext) : value(id), text(idtext) {}
+   LEVELS(int id);
 
    bool operator==(const LEVELS& rhs)  const {
       return (value == rhs.value && text == rhs.text);
@@ -83,28 +84,20 @@ struct LEVELS {
 //  'addLogLevel' is NOT required
 //  LOG(MYFATL) << "this will just work, and it will be counted as a FATAL event";
 namespace g3 {
-   static const int kDebugValue = 100;
-   static const int kInfoValue = 300;
-   static const int kWarningValue = 500;
-   static const int kErrorValue = 800;
-   static const int kFatalValue = 1000;
-   static const int kInternalFatalValue = 2000;
+   static const int kDebugValue = 0;
+   static const int kInfoValue = 1;
+   static const int kWarningValue = 2;
+   static const int kErrorValue = 3;
+   static const int kFatalValue = 4;
+   static const int kInternalFatalValue = 5;
 } // g3
 
 
 const LEVELS G3LOG_DEBUG{g3::kDebugValue, {"DEBUG"}},
-   G3LOG_INFO {g3::kInfoValue, {"INFO"}},
-   G3LOG_WARNING {g3::kWarningValue, {"WARNING"}},
-   G3LOG_ERROR {g3::kErrorValue, {"ERROR"}},
-   G3LOG_FATAL {g3::kFatalValue, {"FATAL"}};
-
-
-// add some macros to avoid name conflicts
-
-#define INFO G3LOG_INFO
-#define WARNING G3LOG_WARNING
-#define ERROR G3LOG_ERROR
-#define FATAL G3LOG_FATAL
+   INFO {g3::kInfoValue, {"INFO"}},
+   WARNING {g3::kWarningValue, {"WARNING"}},
+   ERROR {g3::kErrorValue, {"ERROR"}},
+   FATAL {g3::kFatalValue, {"FATAL"}};
 
 
 namespace g3 {

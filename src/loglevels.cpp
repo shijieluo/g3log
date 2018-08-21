@@ -137,3 +137,13 @@ namespace g3 {
       return true;
    }
 } // g3
+
+LEVELS::LEVELS(int id):value(id){
+      switch(id){
+            case 0: text = "DEBUG"; break;
+            case 1: text = "INFO"; break;
+            case 2: text = "WARNING"; break;
+            case 3: text = "ERROR"; break;
+            case 4: text = "FATAL"; break;              
+      }
+}   
