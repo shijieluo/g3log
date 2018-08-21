@@ -150,17 +150,17 @@ namespace g3 {
 #define G3LOG_LOG(level) if(!g3::logLevel(level)){ } else INTERNAL_LOG_MESSAGE(level).stream()
 
 //LOG for every n message
-#define LOG_EVERY_N(level, n)  \
+#define SOME_KIND_OF_LOG_EVERY_N(level, n, what_to_do)    \
    static int LOG_OCCURRENCES = 0, LOG_OCCURRENCES_MOD_N = 0;  \
    ++LOG_OCCURRENCES;  \
    if (++LOG_OCCURRENCES_MOD_N > n) LOG_OCCURRENCES_MOD_N -= n; \
    if (LOG_OCCURRENCES_MOD_N == 1) INTERNAL_LOG_MESSAGE(level).stream()
 
+#define LOG_EVERY_N(level, n)  \
+   SOME_KIND_OF_LOG_EVERY_N(level, (n), what_to_do)
+
 #define G3LOG_LOG_EVERY_N(level, n)  \
-   static int LOG_OCCURRENCES = 0, LOG_OCCURRENCES_MOD_N = 0;  \
-   ++LOG_OCCURRENCES;  \
-   if (++LOG_OCCURRENCES_MOD_N > n) LOG_OCCURRENCES_MOD_N -= n; \
-   if (LOG_OCCURRENCES_MOD_N == 1) INTERNAL_LOG_MESSAGE(level).stream()
+   SOME_KIND_OF_LOG_EVERY_N(level, (n), what_to_do)
    
 
 // 'Conditional' stream log
@@ -172,19 +172,19 @@ namespace g3 {
    if(true == (boolean_expression))  \
       if(g3::logLevel(level))  INTERNAL_LOG_MESSAGE(level).stream()
 
-#define LOG_IF_EVERY_N(level, boolean_expression, n)      \
+//LOG for every n message with conditions
+#define SOME_KIND_OF_LOG_IF_EVERY_N(level, boolean_expression, what_to_do)    \
   static int LOG_OCCURRENCES = 0, LOG_OCCURRENCES_MOD_N = 0; \
   ++LOG_OCCURRENCES; \
   if boolean_expression && \
      ((LOG_OCCURRENCES_MOD_N=(LOG_OCCURRENCES_MOD_N + 1) % n) == (1 % n))) \
      INTERNAL_LOG_MESSAGE(level).stream();
 
+#define LOG_IF_EVERY_N(level, boolean_expression, n)      \
+  SOME_KIND_OF_LOG_IF_EVERY_N(level, (boolean_expression), (n), what_to_do)
+
 #define G3LOG_LOG_IF_EVERY_N(level, boolean_expression, n)      \
-  static int LOG_OCCURRENCES = 0, LOG_OCCURRENCES_MOD_N = 0; \
-  ++LOG_OCCURRENCES; \
-  if boolean_expression && \
-     ((LOG_OCCURRENCES_MOD_N=(LOG_OCCURRENCES_MOD_N + 1) % n) == (1 % n))) \
-     INTERNAL_LOG_MESSAGE(level).stream();
+  SOME_KIND_OF_LOG_IF_EVERY_N(level, (boolean_expression), (n), what_to_do)
 
 // 'Design By Contract' stream API. For Broken Contracts:
 //         unit testing: it will throw std::runtime_error when a contract breaks
@@ -665,4 +665,9 @@ DECLARE_CHECK_STROP_IMPL(strcasecmp, false)
 #endif  // DCHECK_IS_ON()
 
 
+// add some macros to avoid name conflicts
 
+#define G3LOG_INFO INFO
+#define G3LOG_WARNING WARNING
+#define G3LOG_ERROR ERROR
+#define G3LOG_FATAL FATAL

@@ -52,6 +52,7 @@ struct LEVELS {
 
 
    LEVELS& operator=(LEVELS other) {
+      using std::swap;
       swap(*this, other);
       return *this;
    }
