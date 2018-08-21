@@ -173,12 +173,12 @@ namespace g3 {
       if(g3::logLevel(level))  INTERNAL_LOG_MESSAGE(level).stream()
 
 //LOG for every n message with conditions
-#define SOME_KIND_OF_LOG_IF_EVERY_N(level, boolean_expression)    \
+#define SOME_KIND_OF_LOG_IF_EVERY_N(level, boolean_expression, n)    \
   static int LOG_OCCURRENCES = 0, LOG_OCCURRENCES_MOD_N = 0; \
   ++LOG_OCCURRENCES; \
-  if boolean_expression && \
+  if (boolean_expression && \
      ((LOG_OCCURRENCES_MOD_N=(LOG_OCCURRENCES_MOD_N + 1) % n) == (1 % n))) \
-     INTERNAL_LOG_MESSAGE(level).stream();
+     INTERNAL_LOG_MESSAGE(level).stream()
 
 #define LOG_IF_EVERY_N(level, boolean_expression, n)      \
   SOME_KIND_OF_LOG_IF_EVERY_N(level, (boolean_expression), (n))
