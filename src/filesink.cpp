@@ -8,6 +8,7 @@
 
 #include "g3log/filesink.hpp"
 #include "filesinkhelper.ipp"
+#include "g3log/g3log.hpp"
 #include <cassert>
 #include <chrono>
 
@@ -52,6 +53,12 @@ namespace g3 {
 
    // The actual log receiving function
    void FileSink::fileWrite(LogMessageMover message) {
+      if(FLAGS_logtostderr || FLAGS_alsologtostderr) {
+          std::cerr << message.get().toString() << std::flush;
+      }
+
+      if(FLAGS_logtostderr) return;
+
       std::ofstream &out(filestream());
       out << message.get().toString() << std::flush;
    }

@@ -77,14 +77,14 @@ namespace g3 {
        Example:
        using namespace g3;
        std::unique_ptr<LogWorker> logworker {LogWorker::createLogWorker()};
-       auto handle = addDefaultLogger("my_test_log", "/tmp");
+       auto handle = addDefaultLogger();
        initializeLogging(logworker.get()); // ref. g3log.hpp
 
        std::future<std::string> log_file_name = sinkHandle->call(&FileSink::fileName);
        std::cout << "The filename is: " << log_file_name.get() << std::endl;
-       //   something like: /tmp/my_test_log.g3log.20150819-100300.log
+       //   something like: "<program name>.<hostname>.<user name>.log.<severity level>.".
        */
-       std::unique_ptr<FileSinkHandle> addDefaultLogger(const std::string& log_prefix, const std::string& log_directory, const std::string& default_id = "g3log");
+       std::unique_ptr<FileSinkHandle> addDefaultLogger(const std::string& argv0, const std::string& log_directory = FLAGS_log_dir, const std::string& default_id = "g3log");
 
 
 
@@ -112,6 +112,8 @@ namespace g3 {
       /// this way it's ensured that all existing entries were flushed before 'fatal'
       /// Will abort the application!
       void fatal(FatalMessagePtr fatal_message);
+
+      // gethostname
 
 
    };

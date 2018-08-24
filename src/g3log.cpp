@@ -24,6 +24,7 @@
 #include "g3log/crashhandler.hpp"
 #include "g3log/logmessage.hpp"
 #include "g3log/loglevels.hpp"
+#include "gflags/gflags.h"
 
 
 #include <mutex>
@@ -32,7 +33,44 @@
 #include <thread>
 #include <atomic>
 #include <cstdlib>
+#include <cstring>
 #include <sstream>
+
+
+DEFINE_bool(logtostderr, false,
+                 "log messages go to stderr instead of logfiles");
+DEFINE_bool(alsologtostderr, false,
+                 "log messages go to stderr in addition to logfiles");
+
+DEFINE_int32(minloglevel, 0, "Messages logged at a lower level than this don't "
+                  "actually get logged anywhere");
+
+// To do
+/**********
+DEFINE_int32(stderrthreshold,
+             G3LOG_ERROR.value,
+             "log messages at or above this level are copied to stderr in "
+             "addition to logfiles.  This flag obsoletes --alsologtostderr.");
+************/
+
+static const char* DefaultLogDir() {
+  const char* env;
+  env = getenv("G3LOG_LOG_DIR");
+  if (env != NULL && env[0] != '\0') {
+    return env;
+  }
+  env = getenv("TEST_TMPDIR");
+  if (env != NULL && env[0] != '\0') {
+    return env;
+  }
+  return "";
+}
+
+
+DEFINE_string(log_dir, DefaultLogDir(),
+                   "If specified, logfiles are written into this directory instead "
+                   "of the default logging directory.");
+
 
 namespace {
    std::once_flag g_initialize_flag;
@@ -64,7 +102,7 @@ namespace g3 {
          installCrashHandler();
       });
       std::lock_guard<std::mutex> lock(g_logging_init_mutex);
-      if (internal::isLoggingInitialized() || nullptr == bgworker) {
+      if (internal::isLoggingInitialized() || nullptr == bgworker) {         
          std::ostringstream exitMsg;
          exitMsg << __FILE__ "->" << __FUNCTION__ << ":" << __LINE__ << std::endl;
          exitMsg << "\tFatal exit due to illegal initialization of g3::LogWorker\n";
@@ -73,6 +111,7 @@ namespace g3 {
          std::cerr << exitMsg.str() << std::endl;
          std::exit(EXIT_FAILURE);
       }
+      
 
       // Save the first uninitialized message, if any
       std::call_once(g_save_first_unintialized_flag, [&bgworker] {
@@ -158,6 +197,10 @@ namespace g3 {
       * i.e. (dlopen + dlsym)  */
       void saveMessage(const char* entry, const char* file, int line, const char* function, const LEVELS& level,
                        const char* boolean_expression, int fatal_signal, const char* stack_trace) {
+
+         if(level.value < FLAGS_minloglevel) {           
+           return;
+         }
          LEVELS msgLevel {level};
          LogMessagePtr message {std2::make_unique<LogMessage>(file, line, function, msgLevel)};
          message.get()->write().append(entry);

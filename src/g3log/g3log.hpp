@@ -25,6 +25,7 @@
 #include "g3log/logcapture.hpp"
 #include "g3log/logmessage.hpp"
 #include "g3log/generated_definitions.hpp"
+#include <gflags/gflags.h>
 
 #include <string>
 #include <functional>
@@ -451,7 +452,7 @@ typedef std::string _Check_string;
          Check##name##Impl(                                             \
              GetReferenceableValue(val1),                               \
              GetReferenceableValue(val2),                               \
-             #val1 " " #op " " #val2))                                  \                          
+             #val1 " " #op " " #val2))                                  \
     log(__FILE__, __LINE__,                                             \
         static_cast<const char*>(__PRETTY_FUNCTION__),                  \
      _result).stream()
@@ -688,3 +689,12 @@ DECLARE_CHECK_STROP_IMPL(strcasecmp, false)
 #define FATAL G3LOG_FATAL
 #endif
 */
+// Flags declare
+DECLARE_bool(logtostderr);
+DECLARE_bool(alsologtostderr);
+DECLARE_int32(minloglevel);
+DECLARE_string(log_dir);
+// to do
+// DECLARE_int32(stderrthreshold);
+
+

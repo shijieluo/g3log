@@ -41,7 +41,7 @@ namespace g3 {
          prefix.erase(std::remove_if(prefix.begin(), prefix.end(), ::isspace), prefix.end());
          prefix.erase(std::remove(prefix.begin(), prefix.end(), '/'), prefix.end());
          prefix.erase(std::remove(prefix.begin(), prefix.end(), '\\'), prefix.end());
-         prefix.erase(std::remove(prefix.begin(), prefix.end(), '.'), prefix.end());
+         //prefix.erase(std::remove(prefix.begin(), prefix.end(), '.'), prefix.end());
          prefix.erase(std::remove(prefix.begin(), prefix.end(), ':'), prefix.end());
          if (!isValidFilename(prefix)) {
             return

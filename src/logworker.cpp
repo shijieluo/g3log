@@ -12,8 +12,72 @@
 #include "g3log/g3log.hpp"
 #include "g3log/future.hpp"
 #include "g3log/crashhandler.hpp"
+#ifdef HAVE_SYS_UTSNAME_H
+#include <sys/utsname.h>
+#endif
 
 #include <iostream>
+
+
+static const std::string GetHostName() {
+  std::string hostname;
+#if defined(HAVE_SYS_UTSNAME_H)
+  struct utsname buf;
+  if (0 != uname(&buf)) {
+    // ensure null termination on failure
+    *buf.nodename = '\0';
+  }
+  hostname = buf.nodename;
+#elif defined(OS_WINDOWS)
+  char buf[MAX_COMPUTERNAME_LENGTH + 1];
+  DWORD len = MAX_COMPUTERNAME_LENGTH + 1;
+  if (GetComputerNameA(buf, &len)) {
+    hostname = buf;
+  } else {
+    hostname.clear();
+  }
+#else
+# warning There is no way to retrieve the host name.
+  hostname = "(unknown)";
+#endif
+  return hostname;
+}
+
+
+static const std::string GetProjectShortName(const std::string& argv0) {
+  std::string project_short_name;
+  const char* slash = strrchr(argv0.c_str(), '/');
+#ifdef OS_WINDOWS
+  if (!slash)  slash = strrchr(argv0.c_str(), '\\');
+#endif
+  project_short_name = slash ? slash + 1 : argv0;
+  return project_short_name; 
+}
+
+
+static const std::string MyUserName() {
+  std::string username;
+#if defined(OS_WINDOWS)
+  const char* user = getenv("USERNAME");
+#else
+  const char* user = getenv("USER");
+#endif
+  if(user != NULL) {
+    username = user;
+  }else {
+    username = "invalid-user";
+  }
+  return username;
+}
+
+static const std::string DefaultLogPrefix(const std::string& argv0) {
+  std::string file_stripped_name(GetProjectShortName(argv0));
+  std::string hostname = GetHostName();
+  std::string uidname = MyUserName();
+  file_stripped_name += "." + hostname + "." + uidname;  
+  return file_stripped_name;
+
+}
 
 namespace g3 {
 
@@ -120,7 +184,8 @@ namespace g3 {
       return std::unique_ptr<LogWorker>(new LogWorker);
    }
 
-   std::unique_ptr<FileSinkHandle>LogWorker::addDefaultLogger(const std::string& log_prefix, const std::string& log_directory, const std::string& default_id) {
+   std::unique_ptr<FileSinkHandle>LogWorker::addDefaultLogger(const std::string& argv0, const std::string& log_directory, const std::string& default_id) {
+      std::string log_prefix = DefaultLogPrefix(argv0);      
       return addSink(std2::make_unique<g3::FileSink>(log_prefix, log_directory, default_id), &FileSink::fileWrite);
    }
 
