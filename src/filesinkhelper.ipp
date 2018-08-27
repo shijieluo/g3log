@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "g3log/g3log.hpp"
 
 #include <memory>
 #include <string>
@@ -15,7 +16,10 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
-#include <string>
+#include <cstring>
+#ifndef OS_WINDOWS
+#include <unistd.h>
+#endif
 
 
 namespace g3 {
@@ -113,6 +117,48 @@ namespace g3 {
          return true;
       }
 
+      bool setSymlink(const std::string &file_with_full_path) {          
+          #ifndef OS_WINDOWS
+          const char *slash = strrchr(file_with_full_path.c_str(), '/');
+          #else
+          const char *slash = strrchr(file_with_full_path.c_str(), '\\');
+          #endif
+
+          std::string linkpath;          
+          if ( slash ) linkpath = std::string(file_with_full_path.c_str(), slash-file_with_full_path.c_str()+1);  //  get dirname
+          std::string filename(file_with_full_path);
+          if ( slash ) filename = std::string(slash+1, file_with_full_path.size()-linkpath.size());           
+          
+          const char *point = strchr(filename.c_str(), '.');
+          std::string modulename;
+          if ( point ) modulename = std::string(filename.c_str(), point-filename.c_str());   //   get module name
+          else modulename = "unknownModule";
+          std::string linkname = modulename + ".log";
+
+          linkpath += linkname;
+          unlink(linkpath.c_str()); // delete old symlink          
+          #ifdef OS_WINDOWS
+          //To do
+          #else
+          const char *linkdest = slash ? (slash + 1) : file_with_full_path.c_str();          
+          if (symlink(linkdest, linkpath.c_str()) != 0) {
+             return false;
+          }
+
+          // Make an additional link to the log file in a place specified by
+          // FLAGS_log_link, if indicated
+          if (!FLAGS_log_link.empty()) {
+             linkpath = FLAGS_log_link + "/" + linkname;
+             unlink(linkpath.c_str());                  // delete old one if it exists
+             if (symlink(file_with_full_path.c_str(), linkpath.c_str()) != 0) {             
+                return false;
+             }
+         }
+         #endif
+         return true;
+      }
+      
+
       std::unique_ptr<std::ofstream> createLogFile(const std::string &file_with_full_path) {
          std::unique_ptr<std::ofstream> out(new std::ofstream);
          std::ofstream &stream(*(out.get()));
@@ -120,6 +166,11 @@ namespace g3 {
          if (false == success_with_open_file) {
             out.release();
          }
+
+         if (false == setSymlink(file_with_full_path)) {
+            std::cerr << "SYMLINK ERROR: could not set symlink for the latest log file!\n" << std::flush;
+         }
+
          return out;
       }
 

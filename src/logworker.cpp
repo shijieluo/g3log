@@ -185,8 +185,23 @@ namespace g3 {
    }
 
    std::unique_ptr<FileSinkHandle>LogWorker::addDefaultLogger(const std::string& argv0, const std::string& log_directory, const std::string& default_id) {
-      std::string log_prefix = DefaultLogPrefix(argv0);      
-      return addSink(std2::make_unique<g3::FileSink>(log_prefix, log_directory, default_id), &FileSink::fileWrite);
+      std::string log_prefix = DefaultLogPrefix(argv0);
+      std::string real_dir;
+      if (log_directory.empty()) {
+        #ifdef OS_WINDOWS
+        char tmp[MAX_PATH];
+        if (GetTempPathA(MAX_PATH, tmp)) {
+          real_dir = tmp;
+        } else {
+          real_dir = "C:\\tmp\\"; 
+        }
+        #else
+        real_dir = "/tmp";
+        #endif
+      } else {
+        real_dir = log_directory;
+      }      
+      return addSink(std2::make_unique<g3::FileSink>(log_prefix, real_dir, default_id), &FileSink::fileWrite);
    }
 
 

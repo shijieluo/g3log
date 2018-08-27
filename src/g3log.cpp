@@ -46,12 +46,17 @@ DEFINE_int32(minloglevel, 0, "Messages logged at a lower level than this don't "
                   "actually get logged anywhere");
 
 // To do
-/**********
+/**********   ************/
 DEFINE_int32(stderrthreshold,
              G3LOG_ERROR.value,
              "log messages at or above this level are copied to stderr in "
              "addition to logfiles.  This flag obsoletes --alsologtostderr.");
-************/
+
+DEFINE_int32(v, 0, "show all log message for level <= v.");
+DEFINE_string(log_link, "", "put symbol link to the latest log.");
+// To do
+/**********   ************/
+
 
 static const char* DefaultLogDir() {
   const char* env;

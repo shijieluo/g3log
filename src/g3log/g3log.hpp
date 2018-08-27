@@ -694,7 +694,13 @@ DECLARE_bool(logtostderr);
 DECLARE_bool(alsologtostderr);
 DECLARE_int32(minloglevel);
 DECLARE_string(log_dir);
-// to do
-// DECLARE_int32(stderrthreshold);
+// To do 
+// flags stderrthreshold,log_link,v... 
+DECLARE_int32(stderrthreshold);
+DECLARE_int32(v);
+DECLARE_string(log_link);
+// To do
+
+
 
 
