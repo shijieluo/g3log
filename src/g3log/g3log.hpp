@@ -26,7 +26,9 @@
 #include "g3log/logmessage.hpp"
 #include "g3log/generated_definitions.hpp"
 #include <gflags/gflags.h>
-
+#ifdef HAVE_UNISTD_H
+#include "unistd.h"
+#endif
 #include <string>
 #include <functional>
 #include <string.h>
@@ -193,6 +195,10 @@ namespace g3 {
 #define CHECK(boolean_expression)        \
    if (false == (boolean_expression))  INTERNAL_CONTRACT_MESSAGE(#boolean_expression).stream()
 
+#define LOG_ASSERT(boolean_expression)       \
+   G3LOG_LOG_IF(G3LOG_FATAL, !(boolean_expression)) << "Assert Failed: " #boolean_expression
+
+
 
 /** For details please see this
  * REFERENCE: http://www.cppreference.com/wiki/io/c/printf_format
@@ -312,33 +318,37 @@ And here is possible output
 #define DCHECK_IS_ON() 1
 #endif
 
-template <typename T>
-inline void MakeCheckOpValueString(std::ostream* os, const T& v) {
-  (*os) << v;
-}
 
-// Overrides for char types provide readable values for unprintable
-// characters.
-template <> G3LOG_DLL_DECL
-void MakeCheckOpValueString(std::ostream* os, const char& v);
-template <> G3LOG_DLL_DECL
-void MakeCheckOpValueString(std::ostream* os, const signed char& v);
-template <> G3LOG_DLL_DECL
-void MakeCheckOpValueString(std::ostream* os, const unsigned char& v);
+namespace g3Internal {
+  template <typename T>
+  inline void MakeCheckOpValueString(std::ostream* os, const T& v) {
+    (*os) << v;
+  }
 
-// Build the error message string. Specify no inlining for code size.
-template <typename T1, typename T2>
-std::string* MakeCheckOpString(const T1& v1, const T2& v2, const char* exprtext)
-    __attribute__((noinline));
+  // Overrides for char types provide readable values for unprintable
+  // characters.
+  template <> G3LOG_DLL_DECL
+  void MakeCheckOpValueString(std::ostream* os, const char& v);
+  template <> G3LOG_DLL_DECL
+  void MakeCheckOpValueString(std::ostream* os, const signed char& v);
+  template <> G3LOG_DLL_DECL
+  void MakeCheckOpValueString(std::ostream* os, const unsigned char& v);
 
-namespace base {
+  // Build the error message string. Specify no inlining for code size.
+  template <typename T1, typename T2>
+  std::string* MakeCheckOpString(const T1& v1, const T2& v2, const char* exprtext)
+      __attribute__((noinline));
+
+} //namespace g3Internal
+
+namespace g3Base {
 
 
 // A helper class for formatting "expr (V1 vs. V2)" in a CHECK_XX
 // statement.  See MakeCheckOpString for sample usage.  Other
 // approaches were considered: use of a template method (e.g.,
-// base::BuildCheckOpString(exprtext, base::Print<T1>, &v1,
-// base::Print<T2>, &v2), however this approach has complications
+// g3Base::BuildCheckOpString(exprtext, g3Base::Print<T1>, &v1,
+// g3Base::Print<T2>, &v2), however this approach has complications
 // related to volatile arguments and function-pointer arguments).
 class G3LOG_DLL_DECL CheckOpMessageBuilder {
  public:
@@ -357,7 +367,14 @@ class G3LOG_DLL_DECL CheckOpMessageBuilder {
   std::ostringstream *stream_;
 };
 
-} // namespace base
+} // namespace g3Base
+
+namespace g3Internal {
+
+class G3LOG_DLL_DECL LogMessageVoidify {
+  LogMessageVoidify() {}
+  void operator&(std::ostream&) {}
+};
 
 
 struct CheckOpString {
@@ -391,25 +408,28 @@ inline unsigned long long GetReferenceableValue(unsigned long long t) {
 
 template <typename T1, typename T2>
 std::string* MakeCheckOpString(const T1& v1, const T2& v2, const char* exprtext) {
-  base::CheckOpMessageBuilder comb(exprtext);
+  g3Base::CheckOpMessageBuilder comb(exprtext);
   MakeCheckOpValueString(comb.ForVar1(), v1);
   MakeCheckOpValueString(comb.ForVar2(), v2);
   return comb.NewString();
 }
+
+} // namespace g3Internal
+
 
 #define DEFINE_CHECK_OP_IMPL(name, op) \
   template <typename T1, typename T2> \
   inline std::string* name##Impl(const T1& v1, const T2& v2,    \
                             const char* exprtext) { \
     if (G3LOG_PREDICT_TRUE(v1 op v2)) return NULL; \
-    else return MakeCheckOpString(v1, v2, exprtext); \
+    else return g3Internal::MakeCheckOpString(v1, v2, exprtext); \
   } \
   inline std::string* name##Impl(int v1, int v2, const char* exprtext) { \
     return name##Impl<int, int>(v1, v2, exprtext); \
   }
 
 // We use the full name Check_EQ, Check_NE, etc. in case the file including
-// base/logging.h provides its own #defines for the simpler names EQ, NE, etc.
+// g3Base/logging.h provides its own #defines for the simpler names EQ, NE, etc.
 // This happens if, for example, those are used as token names in a
 // yacc grammar.
 DEFINE_CHECK_OP_IMPL(Check_EQ, ==)  // Compilation error with CHECK_EQ(NULL, x)?
@@ -438,20 +458,20 @@ typedef std::string _Check_string;
 #define CHECK_OP_LOG(name, op, val1, val2, log)                         \
   while (_Check_string* _result =                                       \
          Check##name##Impl(                                             \
-             GetReferenceableValue(val1),                               \
-             GetReferenceableValue(val2),                               \
+             g3Internal::GetReferenceableValue(val1),                               \
+             g3Internal::GetReferenceableValue(val2),                               \
              #val1 " " #op " " #val2))                                  \
     log(__FILE__, __LINE__,                                             \
         static_cast<const char*>(__PRETTY_FUNCTION__),                  \
-        CheckOpString(_result)).stream()
+        g3Internal::CheckOpString(_result)).stream()
 #else
 // In optimized mode, use CheckOpString to hint to compiler that
 // the while condition is unlikely.
 #define CHECK_OP_LOG(name, op, val1, val2, log)                         \
-  while (CheckOpString _result =                                        \
+  while (g3Internal::CheckOpString _result =                                        \
          Check##name##Impl(                                             \
-             GetReferenceableValue(val1),                               \
-             GetReferenceableValue(val2),                               \
+             g3Internal::GetReferenceableValue(val1),                               \
+             g3Internal::GetReferenceableValue(val2),                               \
              #val1 " " #op " " #val2))                                  \
     log(__FILE__, __LINE__,                                             \
         static_cast<const char*>(__PRETTY_FUNCTION__),                  \
@@ -473,8 +493,11 @@ typedef std::string _Check_string;
 // initializer lists.
 
 #define CHECK_NOTNULL(val) \
-  CheckNotNull(__FILE__, __LINE__, "'" #val "' Must be non NULL", (val))
+  g3Internal::CheckNotNull(__FILE__, __LINE__, "'" #val "' Must be non NULL", (val))
 
+
+
+namespace g3Internal {
 // Check if it's compiled in C++11 mode.
 //
 // GXX_EXPERIMENTAL_CXX0X is defined by gcc and clang up to at least
@@ -514,6 +537,8 @@ T* CheckNotNull(const char *file, int line, const char *names, T* t) {
 }
 #endif
 
+} // namespace g3Internal
+
 // Helper functions for string comparisons.
 // To avoid bloat, the definitions are in logging.cc.
 #define DECLARE_CHECK_STROP_IMPL(func, expected) \
@@ -528,7 +553,7 @@ DECLARE_CHECK_STROP_IMPL(strcasecmp, false)
 // Helper macro for string comparisons.
 // Don't use this macro directly in your code, use CHECK_STREQ et al below.
 #define CHECK_STROP(func, op, expected, s1, s2) \
-  while (CheckOpString _result = \
+  while (g3Internal::CheckOpString _result = \
          Check##func##expected##Impl((s1), (s2), \
                                      #s1 " " #op " " #s2)) \
     LOG(G3LOG_FATAL) << *_result.str_
@@ -589,16 +614,16 @@ DECLARE_CHECK_STROP_IMPL(strcasecmp, false)
 #else  // !DCHECK_IS_ON()
 
 #define DLOG(level) \
-  true ? (void) 0 : @ac_google_namespace@::LogMessageVoidify() & LOG(level)
+  true ? (void) 0 : g3logInternal::LogMessageVoidify() & LOG(level)
 
 #define DLOG_IF(level, boolean_expression) \
-  (true || !(boolean_expression)) ? (void) 0 : @ac_google_namespace@::LogMessageVoidify() & LOG(level)
+  (true || !(boolean_expression)) ? (void) 0 : g3logInternal::LogMessageVoidify() & LOG(level)
 
 #define DLOG_EVERY_N(level, n) \
-  true ? (void) 0 : @ac_google_namespace@::LogMessageVoidify() & LOG(level)
+  true ? (void) 0 : g3logInternal::LogMessageVoidify() & LOG(level)
 
 #define DLOG_IF_EVERY_N(level, boolean_expression, n) \
-  (true || !(boolean_expression))? (void) 0 : @ac_google_namespace@::LogMessageVoidify() & LOG(level)
+  (true || !(boolean_expression))? (void) 0 : g3logInternal::LogMessageVoidify() & LOG(level)
 
 #define DLOG_ASSERT(boolean_expression) \
   true ? (void) 0 : LOG_ASSERT(boolean_expression)
@@ -700,7 +725,3 @@ DECLARE_int32(stderrthreshold);
 DECLARE_int32(v);
 DECLARE_string(log_link);
 // To do
-
-
-
-

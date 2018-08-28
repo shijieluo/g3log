@@ -65,7 +65,7 @@ LogCapture::LogCapture(const char *file, const int line, const char *function, c
    }
 }
 
-LogCapture::LogCapture(const char *file, const int line, const char* function, const CheckOpString result, const LEVELS &level,
+LogCapture::LogCapture(const char *file, const int line, const char* function, const g3Internal::CheckOpString result, const LEVELS &level,
                        const char *expression, g3::SignalType fatal_signal, const char *dump)
    : _file(file), _line(line), _function(function), _level(level), _expression(expression), _fatal_signal(fatal_signal) {
 

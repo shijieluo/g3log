@@ -57,7 +57,6 @@ DEFINE_string(log_link, "", "put symbol link to the latest log.");
 // To do
 /**********   ************/
 
-
 static const char* DefaultLogDir() {
   const char* env;
   env = getenv("G3LOG_LOG_DIR");
@@ -304,7 +303,7 @@ namespace g3 {
 
 
 
-namespace base {
+namespace g3Base {
 
 CheckOpMessageBuilder::CheckOpMessageBuilder(const char *exprtext)
     : stream_(new std::ostringstream) {
@@ -325,10 +324,10 @@ std::string* CheckOpMessageBuilder::NewString() {
   return new std::string(stream_->str());
 }
 
-} // namespace base
+} // namespace g3Base
 
 
-
+namespace g3Internal {
 template <>
 void MakeCheckOpValueString(std::ostream* os, const char& v) {
   if (v >= 32 && v <= 126) {
@@ -355,6 +354,8 @@ void MakeCheckOpValueString(std::ostream* os, const unsigned char& v) {
     (*os) << "unsigned char value " << (unsigned short)v;
   }
 }
+
+} //g3Internal end
 
 // Helper functions for string comparisons.
 #define DEFINE_CHECK_STROP_IMPL(name, func, expected)                   \

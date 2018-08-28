@@ -25,7 +25,9 @@
  * As a safety precaution: No memory allocated here will be moved into the background
  * worker in case of dynamic loaded library reasons
 */
-struct CheckOpString;
+namespace g3Internal {
+    struct CheckOpString;
+}
 
 struct LogCapture {
    /// Called from crash handler when a fatal signal has occurred (SIGSEGV etc)
@@ -42,7 +44,7 @@ struct LogCapture {
 
    
    /// Called when Check Failed
-   LogCapture(const char *file, const int line, const char *function, const CheckOpString result, const LEVELS &level = G3LOG_FATAL, const char *expression = "", g3::SignalType fatal_signal = SIGABRT, const char *dump = nullptr);
+   LogCapture(const char *file, const int line, const char *function, const g3Internal::CheckOpString result, const LEVELS &level = G3LOG_FATAL, const char *expression = "", g3::SignalType fatal_signal = SIGABRT, const char *dump = nullptr);
 
 
    LogCapture(const char *file, const int line, const char *function, const std::string result, const LEVELS &level = G3LOG_FATAL, const char *expression = "", g3::SignalType fatal_signal = SIGABRT, const char *dump = nullptr);
